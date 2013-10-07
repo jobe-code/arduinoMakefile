@@ -3,7 +3,7 @@
 # Copyright (C) 2011 Álvaro Justen <alvaro@justen.eng.br>                     #
 # Copyright (C) 2013 Stéphane Raimbault <stephane.raimbault@gmail.com>        #
 #                                                                             #
-# This project is hosted at GitHub: http://github.com/turicas/arduinoMakefile #
+# On GitHub: http://github.com/stephane/arduinoMakefile                       #
 #                                                                             #
 # This program is free software; you can redistribute it and/or               #
 #  modify it under the terms of the GNU General Public License                #
@@ -20,7 +20,7 @@
 #  http://www.gnu.org/licenses/gpl-2.0.html                                   #
 ###############################################################################
 
-#Sketch, board and IDE path configuration (in general change only this section)
+## Sketch, board and IDE path configuration (in general change only this section)
 # Sketch filename (should be in the same directory of Makefile)
 SKETCH_NAME=Blink.ino
 # The port Arduino is connected
@@ -35,7 +35,7 @@ BOARD_TYPE=arduino
 # Baud-rate: use "115200" for Uno or "57600" for Duemilanove
 BAUD_RATE=57600
 
-#Compiler and uploader configuration
+## Compiler configuration
 MCU=atmega328p
 DF_CPU=16000000L
 ARDUINO_CORES=$(ARDUINO_DIR)/hardware/arduino/cores/arduino
