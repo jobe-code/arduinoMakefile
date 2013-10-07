@@ -57,64 +57,63 @@ CORE_CPP_FILES=HardwareSerial new USBCore CDC main HID WMath Stream IPAddress \
 	WString Print Tone
 
 
-all:		clean compile upload
+all:	clean compile upload
 
 clean:
-		@echo '# *** Cleaning...'
-		rm -rf "$(TMP_DIR)"
+	@echo '# *** Cleaning...'
+	rm -rf "$(TMP_DIR)"
 
 
 compile:
-		@echo '# *** Compiling...'
+	@echo '# *** Compiling...'
 
-		mkdir $(TMP_DIR)
-		echo '#include "Arduino.h"' > "$(TMP_DIR)/$(SKETCH_NAME).cpp"
-		cat $(SKETCH_NAME) >> "$(TMP_DIR)/$(SKETCH_NAME).cpp"
+	mkdir $(TMP_DIR)
+	echo '#include "Arduino.h"' > "$(TMP_DIR)/$(SKETCH_NAME).cpp"
+	cat $(SKETCH_NAME) >> "$(TMP_DIR)/$(SKETCH_NAME).cpp"
 
-		@#Compiling the sketch file:
-		$(CPP) -c $(CPP_FLAGS) $(COMMON_FLAGS) $(INCLUDES) \
-		       "$(TMP_DIR)/$(SKETCH_NAME).cpp" \
-		       -o "$(TMP_DIR)/$(SKETCH_NAME).o"
+	@#Compiling the sketch file:
+	$(CPP) -c $(CPP_FLAGS) $(COMMON_FLAGS) $(INCLUDES) \
+	       "$(TMP_DIR)/$(SKETCH_NAME).cpp" \
+	       -o "$(TMP_DIR)/$(SKETCH_NAME).o"
 
-		@#Compiling Arduino core .c dependecies:
-		for core_c_file in ${CORE_C_FILES}; do \
-		    $(CC) -c $(CC_FLAGS) $(COMMON_FLAGS) $(INCLUDES) \
-		         $(ARDUINO_CORES)/$$core_c_file.c \
-			  -o $(TMP_DIR)/$$core_c_file.o; \
-		done
+	@#Compiling Arduino core .c dependecies:
+	for core_c_file in ${CORE_C_FILES}; do \
+	    $(CC) -c $(CC_FLAGS) $(COMMON_FLAGS) $(INCLUDES) \
+	         $(ARDUINO_CORES)/$$core_c_file.c \
+		  -o $(TMP_DIR)/$$core_c_file.o; \
+	done
 
-		@#Compiling Arduino core .cpp dependecies:
-		for core_cpp_file in ${CORE_CPP_FILES}; do \
-		    $(CPP) -c $(CPP_FLAGS) $(COMMON_FLAGS) $(INCLUDES) \
-		           $(ARDUINO_CORES)/$$core_cpp_file.cpp \
-			   -o $(TMP_DIR)/$$core_cpp_file.o; \
-		done
+	@#Compiling Arduino core .cpp dependecies:
+	for core_cpp_file in ${CORE_CPP_FILES}; do \
+	    $(CPP) -c $(CPP_FLAGS) $(COMMON_FLAGS) $(INCLUDES) \
+	           $(ARDUINO_CORES)/$$core_cpp_file.cpp \
+		   -o $(TMP_DIR)/$$core_cpp_file.o; \
+	done
 
-		@#TODO: compile external libraries here
-		@#TODO: use .d files to track dependencies and compile them
-		@#      change .c by -MM and use -MF to generate .d
+	@#TODO: compile external libraries here
+	@#TODO: use .d files to track dependencies and compile them
+	@#      change .c by -MM and use -MF to generate .d
 
-		$(CC) -mmcu=$(MCU) -lm -Wl,--gc-sections -Os \
-		      -o $(TMP_DIR)/$(SKETCH_NAME).elf $(TMP_DIR)/*.o
-		$(AVR_OBJCOPY) -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load \
-			--no-change-warnings --change-section-lma .eeprom=0 \
-		               $(TMP_DIR)/$(SKETCH_NAME).elf \
-			       $(TMP_DIR)/$(SKETCH_NAME).eep
-		$(AVR_OBJCOPY) -O ihex -R .eeprom \
-		               $(TMP_DIR)/$(SKETCH_NAME).elf \
-			       $(TMP_DIR)/$(SKETCH_NAME).hex
-		@echo '# *** Compiled successfully! \o/'
-
+	$(CC) -mmcu=$(MCU) -lm -Wl,--gc-sections -Os \
+	      -o $(TMP_DIR)/$(SKETCH_NAME).elf $(TMP_DIR)/*.o
+	$(AVR_OBJCOPY) -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load \
+		--no-change-warnings --change-section-lma .eeprom=0 \
+	               $(TMP_DIR)/$(SKETCH_NAME).elf \
+		       $(TMP_DIR)/$(SKETCH_NAME).eep
+	$(AVR_OBJCOPY) -O ihex -R .eeprom \
+	               $(TMP_DIR)/$(SKETCH_NAME).elf \
+		       $(TMP_DIR)/$(SKETCH_NAME).hex
+	@echo '# *** Compiled successfully! \o/'
 
 reset:
-		@echo '# *** Resetting...'
-		stty --file $(PORT) hupcl
-		sleep 0.1
-		stty --file $(PORT) -hupcl
+	@echo '# *** Resetting...'
+	stty --file $(PORT) hupcl
+	sleep 0.1
+	stty --file $(PORT) -hupcl
 
 upload:
-		@echo '# *** Uploading...'
-		$(AVRDUDE) -V -p$(MCU) -c$(BOARD_TYPE) \
-		           -b$(BAUD_RATE) -P$(PORT) -D \
-			   -Uflash:w:$(TMP_DIR)/$(SKETCH_NAME).hex:i
-		@echo '# *** Done - enjoy your sketch!'
+	@echo '# *** Uploading...'
+	$(AVRDUDE) -V -p$(MCU) -c$(BOARD_TYPE) \
+	           -b$(BAUD_RATE) -P$(PORT) -D \
+		   -Uflash:w:$(TMP_DIR)/$(SKETCH_NAME).hex:i
+	@echo '# *** Done - enjoy your sketch!'
