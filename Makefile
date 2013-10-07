@@ -22,7 +22,7 @@
 
 #Sketch, board and IDE path configuration (in general change only this section)
 # Sketch filename (should be in the same directory of Makefile)
-SKETCH_NAME=Blink.pde
+SKETCH_NAME=Blink.ino
 # The port Arduino is connected
 #  Uno, in GNU/linux: generally /dev/ttyACM0
 #  Duemilanove, in GNU/linux: generally /dev/ttyUSB0
