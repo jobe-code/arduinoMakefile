@@ -1,7 +1,7 @@
 ###############################################################################
 #                     Makefile for Arduino Duemilanove/Uno                    #
-#             Copyright (C) 2011 Álvaro Justen <alvaro@justen.eng.br>         #
-#                         http://twitter.com/turicas                          #
+# Copyright (C) 2011 Álvaro Justen <alvaro@justen.eng.br>                     #
+# Copyright (C) 2013 Stéphane Raimbault <stephane.raimbault@gmail.com>        #
 #                                                                             #
 # This project is hosted at GitHub: http://github.com/turicas/arduinoMakefile #
 #                                                                             #
@@ -26,31 +26,35 @@ SKETCH_NAME=Blink.pde
 # The port Arduino is connected
 #  Uno, in GNU/linux: generally /dev/ttyACM0
 #  Duemilanove, in GNU/linux: generally /dev/ttyUSB0
-PORT=/dev/ttyACM0
+PORT=/dev/ttyUSB0
 # The path of Arduino IDE
-ARDUINO_DIR=/home/alvaro/arduino-0022
+ARDUINO_DIR=/usr/share/arduino
+# hardware/arduino
 # Boardy type: use "arduino" for Uno or "stk500v1" for Duemilanove
 BOARD_TYPE=arduino
-# Baud-rate: use "115200" for Uno or "19200" for Duemilanove
-BAUD_RATE=115200
+# Baud-rate: use "115200" for Uno or "57600" for Duemilanove
+BAUD_RATE=57600
 
 #Compiler and uploader configuration
-ARDUINO_CORE=$(ARDUINO_DIR)/hardware/arduino/cores/arduino
-INCLUDE=-I. -I$(ARDUINO_DIR)/hardware/arduino/cores/arduino
-TMP_DIR=/tmp/build_arduino
 MCU=atmega328p
-DF_CPU=16000000
+DF_CPU=16000000L
+ARDUINO_CORES=$(ARDUINO_DIR)/hardware/arduino/cores/arduino
+ARDUINO_VARIANTS=$(ARDUINO_DIR)/hardware/arduino/variants/standard
+ARDUINO_VERSION=101
+INCLUDES=-I. -I$(ARDUINO_CORES) -I$(ARDUINO_VARIANTS)
+TMP_DIR=/tmp/build_arduino
+
 CC=/usr/bin/avr-gcc
 CPP=/usr/bin/avr-g++
-AVR_OBJCOPY=/usr/bin/avr-objcopy 
+AVR_OBJCOPY=/usr/bin/avr-objcopy
 AVRDUDE=/usr/bin/avrdude
-CC_FLAGS=-g -Os -w -Wall -ffunction-sections -fdata-sections -fno-exceptions \
-	 -std=gnu99
-CPP_FLAGS=-g -Os -w -Wall -ffunction-sections -fdata-sections -fno-exceptions
-AVRDUDE_CONF=/etc/avrdude.conf
-CORE_C_FILES=pins_arduino WInterrupts wiring_analog wiring wiring_digital \
-	     wiring_pulse wiring_shift
-CORE_CPP_FILES=HardwareSerial main Print Tone WMath WString
+COMMON_FLAGS=-mmcu=$(MCU) -DF_CPU=$(DF_CPU) -MMD -DUSB_VID=null -DUSB_PID=null \
+	-DARDUINO=$(ARDUINO_VERSION)
+CC_FLAGS=-g -Os -Wall -ffunction-sections -fdata-sections
+CPP_FLAGS=-g -Os -Wall -fno-exceptions -ffunction-sections -fdata-sections
+CORE_C_FILES=wiring_pulse WInterrupts wiring wiring_digital wiring_analog
+CORE_CPP_FILES=HardwareSerial new USBCore CDC main HID WMath Stream IPAddress \
+	WString Print Tone
 
 
 all:		clean compile upload
@@ -64,30 +68,25 @@ compile:
 		@echo '# *** Compiling...'
 
 		mkdir $(TMP_DIR)
-		echo '#include "WProgram.h"' > "$(TMP_DIR)/$(SKETCH_NAME).cpp"
+		echo '#include "Arduino.h"' > "$(TMP_DIR)/$(SKETCH_NAME).cpp"
 		cat $(SKETCH_NAME) >> "$(TMP_DIR)/$(SKETCH_NAME).cpp"
 
-		@#$(CPP) -MM -mmcu=$(MCU) -DF_CPU=$(DF_CPU) $(INCLUDE) \
-		#         $(CPP_FLAGS) "$(TMP_DIR)/$(SKETCH_NAME).cpp" \
-		#	 -MF "$(TMP_DIR)/$(SKETCH_NAME).d" \
-		#	 -MT "$(TMP_DIR)/$(SKETCH_NAME).o"
-
 		@#Compiling the sketch file:
-		$(CPP) -c -mmcu=$(MCU) -DF_CPU=$(DF_CPU) $(INCLUDE) \
-		       $(CPP_FLAGS) "$(TMP_DIR)/$(SKETCH_NAME).cpp" \
+		$(CPP) -c $(CPP_FLAGS) $(COMMON_FLAGS) $(INCLUDES) \
+		       "$(TMP_DIR)/$(SKETCH_NAME).cpp" \
 		       -o "$(TMP_DIR)/$(SKETCH_NAME).o"
-		
+
 		@#Compiling Arduino core .c dependecies:
 		for core_c_file in ${CORE_C_FILES}; do \
-		    $(CC) -c -mmcu=$(MCU) -DF_CPU=$(DF_CPU) $(INCLUDE) \
-		          $(CC_FLAGS) $(ARDUINO_CORE)/$$core_c_file.c \
+		    $(CC) -c $(CC_FLAGS) $(COMMON_FLAGS) $(INCLUDES) \
+		         $(ARDUINO_CORES)/$$core_c_file.c \
 			  -o $(TMP_DIR)/$$core_c_file.o; \
 		done
 
 		@#Compiling Arduino core .cpp dependecies:
 		for core_cpp_file in ${CORE_CPP_FILES}; do \
-		    $(CPP) -c -mmcu=$(MCU) -DF_CPU=$(DF_CPU) $(INCLUDE) \
-		           $(CPP_FLAGS) $(ARDUINO_CORE)/$$core_cpp_file.cpp \
+		    $(CPP) -c $(CPP_FLAGS) $(COMMON_FLAGS) $(INCLUDES) \
+		           $(ARDUINO_CORES)/$$core_cpp_file.cpp \
 			   -o $(TMP_DIR)/$$core_cpp_file.o; \
 		done
 
@@ -97,6 +96,10 @@ compile:
 
 		$(CC) -mmcu=$(MCU) -lm -Wl,--gc-sections -Os \
 		      -o $(TMP_DIR)/$(SKETCH_NAME).elf $(TMP_DIR)/*.o
+		$(AVR_OBJCOPY) -O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load \
+			--no-change-warnings --change-section-lma .eeprom=0 \
+		               $(TMP_DIR)/$(SKETCH_NAME).elf \
+			       $(TMP_DIR)/$(SKETCH_NAME).eep
 		$(AVR_OBJCOPY) -O ihex -R .eeprom \
 		               $(TMP_DIR)/$(SKETCH_NAME).elf \
 			       $(TMP_DIR)/$(SKETCH_NAME).hex
@@ -108,11 +111,10 @@ reset:
 		stty --file $(PORT) hupcl
 		sleep 0.1
 		stty --file $(PORT) -hupcl
-		
 
 upload:
 		@echo '# *** Uploading...'
-		$(AVRDUDE) -q -V -p $(MCU) -C $(AVRDUDE_CONF) -c $(BOARD_TYPE) \
-		           -b $(BAUD_RATE) -P $(PORT) \
-			   -U flash:w:$(TMP_DIR)/$(SKETCH_NAME).hex:i
+		$(AVRDUDE) -V -p$(MCU) -c$(BOARD_TYPE) \
+		           -b$(BAUD_RATE) -P$(PORT) -D \
+			   -Uflash:w:$(TMP_DIR)/$(SKETCH_NAME).hex:i
 		@echo '# *** Done - enjoy your sketch!'
